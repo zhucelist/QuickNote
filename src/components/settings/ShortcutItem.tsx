@@ -2,14 +2,52 @@ import { useState, useEffect } from 'react';
 
 const formatShortcut = (shortcut: string) => {
   if (!shortcut) return '未设置';
-  return shortcut
-    .replace('Command', 'Cmd')
-    .replace('Control', 'Ctrl')
-    .replace('Option', 'Opt')
-    .replace('ArrowUp', '↑')
-    .replace('ArrowDown', '↓')
-    .replace('ArrowLeft', '←')
-    .replace('ArrowRight', '→');
+  
+  // 分割快捷键组合
+  const keys = shortcut.split('+');
+  
+  return (
+    <div className="flex items-center gap-1">
+      {keys.map((key, index) => {
+        // 处理特殊键显示
+        let displayKey = key
+          .replace('Command', '⌘')
+          .replace('Cmd', '⌘')
+          .replace('Control', '⌃')
+          .replace('Ctrl', '⌃')
+          .replace('Option', '⌥')
+          .replace('Opt', '⌥')
+          .replace('Alt', '⌥')
+          .replace('Shift', '⇧')
+          .replace('ArrowUp', '↑')
+          .replace('ArrowDown', '↓')
+          .replace('ArrowLeft', '←')
+          .replace('ArrowRight', '→')
+          .replace('Enter', '↵')
+          .replace('Backspace', '⌫')
+          .replace('Delete', '⌦')
+          .replace('Escape', 'Esc')
+          .replace('Space', '␣');
+
+        return (
+          <span 
+            key={index}
+            className="
+              inline-flex items-center justify-center 
+              min-w-[20px] h-6 px-1.5 
+              text-xs font-medium font-sans
+              bg-white dark:bg-zinc-800 
+              text-zinc-600 dark:text-zinc-300
+              border-b-2 border-zinc-200 dark:border-zinc-700 
+              rounded-[4px] shadow-sm
+            "
+          >
+            {displayKey}
+          </span>
+        );
+      })}
+    </div>
+  );
 };
 
 export const ShortcutItem = ({ 
@@ -51,12 +89,6 @@ export const ShortcutItem = ({
     const modifiers: string[] = [];
     if (e.ctrlKey) modifiers.push('Ctrl');
     if (e.metaKey) modifiers.push(navigator.platform.includes('Mac') ? 'Option' : 'Meta'); // Electron use Option for Alt on Mac? No, Option is Alt. 
-    // Electron Accelerator: CommandOrControl, Alt, Option, Meta, Shift
-    // Web: metaKey (Command on Mac, Win on Win), altKey (Option on Mac, Alt on Win), ctrlKey, shiftKey
-    
-    // Correction for Electron Accelerator format
-    // Mac: Command (Cmd), Control (Ctrl), Option (Alt), Shift
-    // Win: Control (Ctrl), Alt, Shift, Meta (Win)
     
     const isMac = navigator.platform.includes('Mac');
     
@@ -79,40 +111,40 @@ export const ShortcutItem = ({
     }
 
     const shortcut = [...electronModifiers, key].join('+');
-    setCurrentValue(shortcut);
     
-    // 检查冲突 (可选：实时检查，或者在保存时检查)
-    // 这里我们先只是展示，保存时再验证
+    // 立即尝试保存
+    saveNewShortcut(shortcut);
   };
 
-  const handleSave = async () => {
-    if (currentValue === value) {
+  const saveNewShortcut = async (shortcut: string) => {
+    if (shortcut === value) {
         setIsRecording(false);
         return;
     }
     
     // 简单校验格式
-    if (!currentValue || currentValue.trim() === '') {
+    if (!shortcut || shortcut.trim() === '') {
         setError('快捷键不能为空');
         return;
     }
 
-    // 调用父组件的保存，父组件会调用 IPC
-    // 我们可以在这里先调用 IPC check-shortcut-available
+    // 立即校验并保存
     try {
-        const isAvailable = await window.ipcRenderer.invoke('check-shortcut-available', currentValue);
+        const isAvailable = await window.ipcRenderer.invoke('check-shortcut-available', shortcut);
         if (!isAvailable) {
             setError('快捷键已被占用');
+            // 保持录制状态，只显示错误
             return;
         }
         
         setError(null);
         if (onSave) {
-            // onSave 可能会再次调用 update-shortcut，那里也会有双重检查
-            await onSave(currentValue); 
+            await onSave(shortcut); 
         } else {
-            onChange(currentValue);
+            onChange(shortcut);
         }
+        // 保存成功后退出录制
+        setCurrentValue(shortcut);
         setIsRecording(false);
     } catch (e) {
         setError('验证快捷键失败');
@@ -164,15 +196,6 @@ export const ShortcutItem = ({
         
         {isRecording && (
             <div className="flex gap-1">
-                <button 
-                    onClick={handleSave}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded-md transition-colors"
-                    title="保存"
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                </button>
                  <button 
                     onClick={() => {
                         setIsRecording(false);

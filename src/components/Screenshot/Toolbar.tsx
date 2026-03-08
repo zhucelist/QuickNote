@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { MousePointer2, Type, Square, Circle, ArrowRight, Check, X, RotateCcw, RotateCw, Stamp, Focus, Grid3x3, Brush, ScanText, Pin, Download, ArchiveIcon } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -15,29 +15,42 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, onAction, active
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [hoveredButtonRect, setHoveredButtonRect] = useState<{ left: number, width: number } | null>(null);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
+  const toolbarRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Adjust position to keep within viewport
-    const toolbarHeight = 60; // Approximate height
-    const toolbarWidth = 400; // Approximate width
+  // Use useLayoutEffect to measure and adjust position before paint
+  useLayoutEffect(() => {
     const margin = 10;
-
     let { x, y } = position;
 
-    // Vertical adjustment: if below screen, clamp to bottom
-    if (y + toolbarHeight > window.innerHeight) {
-        y = window.innerHeight - toolbarHeight - margin;
-    }
+    if (toolbarRef.current) {
+        // Get actual dimensions
+        const toolbarWidth = toolbarRef.current.offsetWidth;
+        const toolbarHeight = toolbarRef.current.offsetHeight;
 
-    // Horizontal adjustment
-    if (x - toolbarWidth / 2 < margin) {
-        x = toolbarWidth / 2 + margin;
-    } else if (x + toolbarWidth / 2 > window.innerWidth - margin) {
-        x = window.innerWidth - toolbarWidth / 2 - margin;
+        // Vertical adjustment
+        if (y + toolbarHeight > window.innerHeight - margin) {
+            y = window.innerHeight - toolbarHeight - margin;
+        }
+        if (y < margin) {
+            y = margin;
+        }
+
+        // Horizontal adjustment
+        // Since we use translate(-50%, 0), x represents the center point
+        // Left edge: x - width/2
+        // Right edge: x + width/2
+        
+        if (x - toolbarWidth / 2 < margin) {
+            // Left edge overflow -> Shift center right
+            x = toolbarWidth / 2 + margin;
+        } else if (x + toolbarWidth / 2 > window.innerWidth - margin) {
+            // Right edge overflow -> Shift center left
+            x = window.innerWidth - toolbarWidth / 2 - margin;
+        }
     }
 
     setAdjustedPosition({ x, y });
-  }, [position]);
+  }, [position, activeTool]); // Re-calculate when position or content (activeTool) changes
 
   const tools = [
     { id: 'select', icon: <MousePointer2 size={18} />, label: '选择' },
@@ -89,6 +102,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, onAction, active
   
   return (
     <div 
+      ref={toolbarRef}
       className="fixed z-50 flex flex-col items-center gap-2"
       style={{ 
         left: adjustedPosition.x, 

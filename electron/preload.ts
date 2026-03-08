@@ -60,8 +60,7 @@ const forwardToMain = (level: string, ...args: any[]) => {
     }
 };
 
-contextBridge.exposeInMainWorld('console', {
-    ...originalConsole,
+contextBridge.exposeInMainWorld('electronConsole', {
     log: (...args: any[]) => {
         originalConsole.log(...args);
         forwardToMain('log', ...args);
@@ -83,3 +82,9 @@ contextBridge.exposeInMainWorld('console', {
         forwardToMain('debug', ...args);
     }
 });
+
+// 另外，如果需要全局拦截，直接覆盖 console（仅在 contextIsolation: false 时有效，但现在推荐用 expose）
+// 在 contextIsolation: true 下，我们无法直接覆盖 window.console
+// 所以这里只是提供一个辅助 API。前端如果想自动转发，需要手动调用 window.electronConsole.log
+// 或者在前端入口处自己劫持 console 并调用 window.electronConsole
+

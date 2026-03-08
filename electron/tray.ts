@@ -16,7 +16,12 @@ export class TrayManager {
     // 这是一个简单的 16x16 黑色方块的 Base64，实际生产环境应该替换为真实的 PNG Base64
     const DEFAULT_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAADFJREFUOE9jZKAQMFKon2HgP+F/CqIxG8BwE8M//iMjI2NUQ8BoGKA9DNgcQAg30NAAAHgvBBshD1rkAAAAAElFTkSuQmCC';
     
+    // 默认图标处理
     let icon = nativeImage.createFromDataURL(DEFAULT_ICON);
+    // 关键修复：确保默认图标在 macOS 上也是 Template Image，以适应深色模式
+    if (process.platform === 'darwin') {
+        icon.setTemplateImage(true);
+    }
     
     // 如果 iconPath 是 PNG/ICO，尝试加载
     // 在开发模式下，iconPath 可能是 undefined 或者指向不正确的路径
@@ -111,12 +116,17 @@ export class TrayManager {
   private toggleWindow() {
     if (this.window.isVisible()) {
       this.window.hide();
+      // 保持 Dock 图标可见
     } else {
       this.showWindow();
     }
   }
 
   private showWindow() {
+    // 确保 Dock 图标显示
+    if (process.platform === 'darwin') {
+      app.dock.show();
+    }
     this.window.show();
     this.window.focus();
   }

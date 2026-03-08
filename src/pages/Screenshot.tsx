@@ -17,7 +17,30 @@ export const ScreenshotPage: React.FC = () => {
 
   // Calculate toolbar position based on selection
   const toolbarPosition = selection 
-    ? { x: selection.x + selection.width / 2, y: selection.y + selection.height + 10 } 
+    ? (() => {
+        const toolbarHeight = 60; // 预估工具栏高度
+        const margin = 10;
+        
+        let x = selection.x + selection.width / 2;
+        let y = selection.y + selection.height + margin;
+        
+        // 检查底部是否有足够空间 (假设底部有 60px 的 Dock 或系统栏需要避让)
+        if (y + toolbarHeight > window.innerHeight - 20) {
+            // 底部空间不足，尝试放在选区上方
+            // 上方位置：选区顶部 - 工具栏高度 - 边距
+            const topY = selection.y - toolbarHeight - margin;
+            
+            // 检查上方是否有足够空间 (顶部通常没有 Dock，保留 10px 边距即可)
+            if (topY > 10) {
+                y = topY;
+            } else {
+                // 上下都不足（例如全屏截图），放在选区内部底部
+                y = window.innerHeight - toolbarHeight - margin - 50; 
+            }
+        }
+        
+        return { x, y };
+    })()
     : { x: window.innerWidth / 2, y: window.innerHeight - 80 };
 
   const selectionRef = useRef(selection);

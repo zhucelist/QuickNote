@@ -1,12 +1,9 @@
 import { BrowserWindow, ipcMain, screen, nativeImage, Menu, dialog, app, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { Store } from './store';
 import { generateFilename } from './utils/file-utils';
 import { showNotification } from './utils/notification-utils';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export type PinContent = {
     type: 'image' | 'text' | 'html' | 'color';
@@ -344,7 +341,7 @@ export class PinManager {
       hasShadow: false, // Disable system shadow to use custom CSS shadow
       skipTaskbar: true,
       webPreferences: {
-        preload: path.join(__dirname, 'preload.mjs'),
+        preload: path.join(app.getAppPath(), 'dist-electron/preload.cjs'),
         backgroundThrottling: false,
       },
     });
@@ -355,7 +352,7 @@ export class PinManager {
     if (process.env.VITE_DEV_SERVER_URL) {
       win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#pin`);
     } else {
-      win.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'pin' });
+      win.loadFile(path.join(app.getAppPath(), 'dist/index.html'), { hash: 'pin' });
     }
 
     win.on('closed', () => {

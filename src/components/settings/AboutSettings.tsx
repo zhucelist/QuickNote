@@ -79,21 +79,21 @@ export const AboutSettings = () => {
                 icon={<Github size={20} />} 
                 label="GitHub 仓库" 
                 desc="查看源码与贡献代码"
-                onClick={() => openLink('https://github.com/yourusername/quicknote')}
+                onClick={() => openLink('https://github.com/zhucelist/QuickNote')}
             />
             <div className="h-px bg-zinc-100 dark:bg-zinc-800" />
             <LinkItem 
                 icon={<Mail size={20} />} 
                 label="反馈问题" 
                 desc="提交 Bug 或功能建议"
-                onClick={() => openLink('mailto:support@example.com')}
+                onClick={() => openLink('mailto:zhucelist@163.com')}
             />
             <div className="h-px bg-zinc-100 dark:bg-zinc-800" />
             <LinkItem 
                 icon={<ExternalLink size={20} />} 
                 label="官方网站" 
                 desc="访问官网获取更多信息"
-                onClick={() => openLink('https://example.com')}
+                onClick={() => openLink('https://github.com/zhucelist/QuickNote')}
             />
         </div>
 

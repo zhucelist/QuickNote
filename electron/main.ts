@@ -73,10 +73,19 @@ function createWindow() {
     fullscreenable,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
+      devTools: true, // 明确允许 DevTools
+      sandbox: false, // 关闭沙盒，解决 preload 加载与 file:// 协议本地资源访问问题
+      contextIsolation: true, // 保持开启，使用 contextBridge
+      webSecurity: true, // 保持开启，安全最佳实践
     },
     show: false, // 先隐藏，根据启动方式决定是否显示
   })
+  
+  // 临时：生产环境也打开 DevTools 方便排查白屏
+  // if (!app.isPackaged) {
+    // win.webContents.openDevTools();
+  // }
   
   // 处理静默启动逻辑
   handleSilentStart();
@@ -116,7 +125,7 @@ function createWindow() {
   });
 
   // 初始化托盘管理器
-  const iconPath = path.join(process.env.VITE_PUBLIC, 'electron-vite.svg');
+  const iconPath = path.join(process.env.VITE_PUBLIC as string, 'electron-vite.svg');
   trayManager = new TrayManager(win, iconPath);
   
   // 初始化截图管理器
@@ -140,6 +149,11 @@ function createWindow() {
     if (!isQuitting) {
       event.preventDefault();
       win?.hide();
+      // 在 macOS 上，窗口隐藏时可以隐藏 Dock 图标（可选，取决于产品定义）
+      // 但用户反馈希望在 Dock 中也能看到，所以保持显示
+      // if (process.platform === 'darwin') {
+      //   app.dock.hide(); 
+      // }
       return false;
     }
     return true;
@@ -153,8 +167,19 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    // win.loadFile('dist/index.html')
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    // 生产环境使用 loadFile 加载
+    // 使用 app.getAppPath() 确保路径正确，不依赖 __dirname
+    const appPath = app.getAppPath();
+    const indexHtml = path.join(appPath, 'dist/index.html');
+    
+    log.info('应用路径 (appPath):', appPath);
+    log.info('尝试加载 index.html:', indexHtml);
+    
+    // 生产环境必须使用 hash 模式的路径或确保路由正确
+    // 如果是单页应用 (SPA)，直接加载 index.html
+    win.loadFile(indexHtml).catch(e => {
+        log.error('加载index.html失败:', e, '尝试路径:', indexHtml);
+    });
   }
 }
 
@@ -375,10 +400,10 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
-    // Explicitly set activation policy to fix "SetApplicationIsDaemon" error on macOS
+    // Explicitly set activation policy to regular to ensure Dock icon is visible
     if (process.platform === 'darwin') {
-    app.setActivationPolicy('regular');
-  }
+      app.setActivationPolicy('regular');
+    }
   createWindow();
 })
 
@@ -412,6 +437,13 @@ ipcMain.handle('check-for-update', () => {
     win?.webContents.send('update-message', '开发环境无法检查更新');
     return;
   }
+  
+  // 设置 feed URL（可选，如果 app-update.yml 配置正确则不需要）
+  // autoUpdater.setFeedURL({
+  //   provider: 'generic',
+  //   url: 'https://gar-update.com/updates'
+  // });
+  
   autoUpdater.checkForUpdates();
 });
 

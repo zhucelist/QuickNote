@@ -62,7 +62,7 @@ export class ScreenshotManager {
 
   // ... (createWindow method remains mostly same, just update currentScreenshotDataUrl usage if needed)
   private createWindow(width: number, height: number, screenshotDataUrl: string) {
-    const preloadPath = path.join(process.env.APP_ROOT!, 'dist-electron', 'preload.mjs');
+    const preloadPath = path.join(process.env.APP_ROOT!, 'dist-electron', 'preload.cjs');
 
     this.screenshotWindow = new BrowserWindow({
       width,
@@ -78,6 +78,9 @@ export class ScreenshotManager {
       movable: false,
       enableLargerThanScreen: true,
       hasShadow: false,
+      // 关键：允许全屏覆盖 Dock
+      fullscreen: false, // 不使用系统全屏，而是手动覆盖
+      type: 'panel', // 尝试 panel 类型以覆盖 Dock，或者使用 'desktop'
       webPreferences: {
         preload: preloadPath,
         nodeIntegration: false,
@@ -85,12 +88,22 @@ export class ScreenshotManager {
         webSecurity: false,
       },
     });
+    
+    // 强制设置层级，确保覆盖 Dock (Dock 层级通常很高)
+    this.screenshotWindow.setAlwaysOnTop(true, 'screen-saver');
+    this.screenshotWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    this.screenshotWindow.setSize(width, height); // 再次确保尺寸
+    this.screenshotWindow.setPosition(0, 0); // 再次确保位置
 
-    const url = process.env.VITE_DEV_SERVER_URL
-      ? `${process.env.VITE_DEV_SERVER_URL}#screenshot`
-      : `file://${path.join(process.env.APP_ROOT!, 'dist/index.html')}#screenshot`;
-
-    this.screenshotWindow.loadURL(url);
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.screenshotWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#screenshot`);
+    } else {
+      // 生产环境使用 loadFile 配合 hash
+      // 注意：loadFile 支持 hash 选项
+      this.screenshotWindow.loadFile(path.join(app.getAppPath(), 'dist/index.html'), {
+        hash: 'screenshot'
+      });
+    }
 
     this.screenshotWindow.webContents.on('did-finish-load', () => {
       this.screenshotWindow?.webContents.send('screenshot-data', screenshotDataUrl);
