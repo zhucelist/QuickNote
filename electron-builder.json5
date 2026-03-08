@@ -16,7 +16,7 @@
       "dmg",
       "zip"
     ],
-    "artifactName": "${productName}-Mac-${version}-${arch}.${ext}"
+    "artifactName": "${name}-Mac-${version}-${arch}.${ext}"
   },
   "dmg": {
     "window": {
@@ -45,7 +45,7 @@
         ]
       }
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    "artifactName": "${name}-Windows-${version}-Setup.${ext}"
   },
   "nsis": {
     "oneClick": false,
@@ -57,7 +57,7 @@
     "target": [
       "AppImage"
     ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "artifactName": "${name}-Linux-${version}.${ext}"
   },
   "publish": [
     {

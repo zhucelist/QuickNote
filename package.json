@@ -1,15 +1,15 @@
 {
   "name": "quicknote",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "build:win": "tsc && vite build && electron-builder --win",
     "build:mac": "tsc && vite build && electron-builder --mac",
-    "build:all": "tsc && vite build && electron-builder -mwl",
-    "publish": "tsc && vite build && electron-builder --publish always",
+    "build:all": "tsc && vite build && electron-builder -mw",
+    "publish": "tsc && vite build && electron-builder --publish always -mw",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
