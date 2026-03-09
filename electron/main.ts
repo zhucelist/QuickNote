@@ -440,8 +440,9 @@ ipcMain.handle('check-for-update', () => {
   
   // 设置 feed URL（可选，如果 app-update.yml 配置正确则不需要）
   // autoUpdater.setFeedURL({
-  //   provider: 'generic',
-  //   url: 'https://gar-update.com/updates'
+  //   provider: 'github',
+  //   owner: 'zhucelist',
+  //   repo: 'QuickNote'
   // });
   
   autoUpdater.checkForUpdates();

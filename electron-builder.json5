@@ -16,7 +16,11 @@
       "dmg",
       "zip"
     ],
-    "artifactName": "${name}-Mac-${version}-${arch}.${ext}"
+    "artifactName": "${name}-Mac-${version}-${arch}.${ext}",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist"
   },
   "dmg": {
     "window": {
@@ -51,7 +55,12 @@
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    "runAfterFinish": true,
+    "shortcutName": "${productName}",
+    "uninstallDisplayName": "${productName}",
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
   },
   "linux": {
     "target": [

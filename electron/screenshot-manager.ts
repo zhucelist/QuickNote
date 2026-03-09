@@ -64,7 +64,7 @@ export class ScreenshotManager {
   private createWindow(width: number, height: number, screenshotDataUrl: string) {
     const preloadPath = path.join(process.env.APP_ROOT!, 'dist-electron', 'preload.cjs');
 
-    this.screenshotWindow = new BrowserWindow({
+    const winOptions: Electron.BrowserWindowConstructorOptions = {
       width,
       height,
       x: 0,
@@ -78,28 +78,38 @@ export class ScreenshotManager {
       movable: false,
       enableLargerThanScreen: true,
       hasShadow: false,
-      // 关键：允许全屏覆盖 Dock
-      fullscreen: false, // 不使用系统全屏，而是手动覆盖
-      type: 'panel', // 尝试 panel 类型以覆盖 Dock，或者使用 'desktop'
+      fullscreen: false,
       webPreferences: {
         preload: preloadPath,
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: false,
       },
-    });
+    };
+
+    // Windows 平台特殊处理
+    if (process.platform === 'win32') {
+      winOptions.type = 'toolbar'; // 或者不设置 type
+      winOptions.skipTaskbar = true;
+    } else {
+      // macOS
+      winOptions.type = 'panel';
+      winOptions.hiddenInMissionControl = true;
+    }
+
+    this.screenshotWindow = new BrowserWindow(winOptions);
     
-    // 强制设置层级，确保覆盖 Dock (Dock 层级通常很高)
+    // 强制设置层级
     this.screenshotWindow.setAlwaysOnTop(true, 'screen-saver');
     this.screenshotWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    this.screenshotWindow.setSize(width, height); // 再次确保尺寸
-    this.screenshotWindow.setPosition(0, 0); // 再次确保位置
+    
+    // ... rest of the method
+    this.screenshotWindow.setSize(width, height); 
+    this.screenshotWindow.setPosition(0, 0);
 
     if (process.env.VITE_DEV_SERVER_URL) {
       this.screenshotWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#screenshot`);
     } else {
-      // 生产环境使用 loadFile 配合 hash
-      // 注意：loadFile 支持 hash 选项
       this.screenshotWindow.loadFile(path.join(app.getAppPath(), 'dist/index.html'), {
         hash: 'screenshot'
       });
