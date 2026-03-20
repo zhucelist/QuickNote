@@ -18,7 +18,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: [],
+              external: ['tesseract.js', 'tesseract.js-core'],
             },
           },
         },

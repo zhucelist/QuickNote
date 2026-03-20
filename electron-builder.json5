@@ -1,8 +1,7 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.gar.clipboard",
-  "asar": true,
+  "appId": "quick",
   "productName": "快截笔记",
   "directories": {
     "output": "release/${version}"
@@ -11,16 +10,27 @@
     "dist",
     "dist-electron"
   ],
+  "afterSign": null,
   "mac": {
     "target": [
       "dmg",
-      "zip"
+      "zip",
+      "pkg"
     ],
     "artifactName": "${name}-Mac-${version}-${arch}.${ext}",
     "hardenedRuntime": true,
     "gatekeeperAssess": false,
     "entitlements": "build/entitlements.mac.plist",
     "entitlementsInherit": "build/entitlements.mac.plist"
+  },
+  "pkg": {
+    "scripts": "build/pkg-scripts",
+    "artifactName": "${name}-Mac-${version}-${arch}.${ext}",
+    "allowAnywhere": true,
+    "allowCurrentUserHome": false,
+    "allowRootDirectory": true,
+    "isRelocatable": false,
+    "isVersionChecked": true
   },
   "dmg": {
     "window": {

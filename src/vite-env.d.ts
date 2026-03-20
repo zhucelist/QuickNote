@@ -39,3 +39,7 @@ declare module 'react-screenshots' {
   const Screenshots: React.FC<ScreenshotsProps>;
   export default Screenshots;
 }
+
+interface Window {
+  ipcRenderer: import('electron').IpcRenderer
+}

@@ -1,13 +1,24 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
+const listenerStore = new Map<string, Map<Function, Function>>()
+
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
     const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
+    const wrapped = (event: unknown, ...rest: unknown[]) => (listener as any)(event, ...rest)
+    if (!listenerStore.has(channel)) listenerStore.set(channel, new Map())
+    listenerStore.get(channel)!.set(listener as any, wrapped)
+    return ipcRenderer.on(channel, wrapped as any)
   },
   off(...args: Parameters<typeof ipcRenderer.off>) {
     const [channel, ...omit] = args
+    const candidate = omit[0] as any
+    const wrapped = listenerStore.get(channel as any)?.get(candidate)
+    if (wrapped) {
+      listenerStore.get(channel as any)!.delete(candidate)
+      return ipcRenderer.off(channel, wrapped as any)
+    }
     return ipcRenderer.off(channel, ...omit)
   },
   send(...args: Parameters<typeof ipcRenderer.send>) {

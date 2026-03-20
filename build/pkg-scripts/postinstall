@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Remove quarantine attribute to bypass Gatekeeper
+# This script is executed after installation
+# $2 is the target installation path (e.g. /Applications)
+
+APP_PATH="$2/快截笔记.app"
+
+if [ -d "$APP_PATH" ]; then
+    echo "Removing quarantine attribute from $APP_PATH"
+    /usr/bin/xattr -cr "$APP_PATH"
+fi
+
+exit 0

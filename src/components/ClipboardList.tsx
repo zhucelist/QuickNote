@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useClipboardStore, ClipboardItem } from '../store/clipboard';
-import { Search, Copy, Image, Type, Trash2, Check, Monitor } from 'lucide-react';
+import { Search, Copy, Image, Type, Trash2, Check, Monitor, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 import { ClipboardImage } from './ClipboardImage';
 
@@ -9,15 +9,11 @@ export const ClipboardList = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    // 设置监听器以接收主进程的更新
     const handleUpdate = (_event: unknown, newHistory: ClipboardItem[]) => {
       setHistory(newHistory);
     };
     
-    // 初始获取
     window.ipcRenderer.invoke('get-clipboard-history').then(setHistory);
-
-    // 订阅更新
     window.ipcRenderer.on('clipboard-update', handleUpdate);
 
     return () => {
@@ -32,11 +28,8 @@ export const ClipboardList = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // 置顶功能已移除
-
   const decodeContent = (content: string) => {
     try {
-      // 简单判断是否是编码后的 URL
       if (/%[0-9A-F]{2}/i.test(content)) {
         return decodeURIComponent(content);
       }
@@ -53,7 +46,7 @@ export const ClipboardList = () => {
     const parts = text.split(re);
     return parts.map((part, idx) =>
       re.test(part)
-        ? <span key={idx} className="text-red-600 dark:text-red-400 font-semibold">{part}</span>
+        ? <span key={idx} className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium px-0.5 rounded">{part}</span>
         : <span key={idx}>{part}</span>
     );
   };
@@ -69,7 +62,6 @@ export const ClipboardList = () => {
   };
 
   const filteredHistory = history.filter((item) => {
-    // 不区分大小写的搜索
     const query = searchQuery.toLowerCase();
     
     if (item.type === 'text') {
@@ -81,45 +73,33 @@ export const ClipboardList = () => {
     return true;
   });
 
-  // Virtual windowing
   const containerRef = useRef<HTMLDivElement>(null);
-  const EST_ROW = 110;
-  const OVERSCAN = 6;
-  const [range, setRange] = useState({ start: 0, end: Math.min(20, filteredHistory.length) });
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const onScroll = () => {
-      const scrollTop = el.scrollTop;
-      const height = el.clientHeight;
-      const start = Math.max(0, Math.floor(scrollTop / EST_ROW) - OVERSCAN);
-      const visible = Math.ceil(height / EST_ROW) + OVERSCAN * 2;
-      const end = Math.min(filteredHistory.length, start + visible);
-      setRange((prev) => (prev.start === start && prev.end === end) ? prev : { start, end });
-    };
-    onScroll();
-    el.addEventListener('scroll', onScroll);
-    return () => el.removeEventListener('scroll', onScroll);
-  }, [filteredHistory.length]);
-
-  useEffect(() => {
-    // Reset range when list shrinks
-    setRange({ start: 0, end: Math.min(20, filteredHistory.length) });
-  }, [searchQuery, filteredHistory.length]);
-
-  const padTop = range.start * EST_ROW;
-  const padBottom = Math.max(0, (filteredHistory.length - range.end) * EST_ROW);
+    el.scrollTop = 0;
+  }, [searchQuery]);
 
   return (
-    <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
+    <div className="flex flex-col h-full min-h-0 bg-zinc-50/50 dark:bg-zinc-950/50">
       {/* 头部 */}
-      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800/50 bg-zinc-50 dark:bg-zinc-950 sticky top-0 z-10 transition-colors duration-200">
-        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 rounded-md px-3 py-2 border border-zinc-200 dark:border-zinc-800 focus-within:border-zinc-400 dark:focus-within:border-zinc-700 focus-within:ring-1 focus-within:ring-zinc-400 dark:focus-within:ring-zinc-700 transition-all shadow-sm dark:shadow-none">
-          <Search size={16} className="text-zinc-400 dark:text-zinc-500" />
+      <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl sticky top-0 z-10">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg shadow-blue-500/20">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">剪切板历史</h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">管理和搜索您的剪切板记录</p>
+          </div>
+        </div>
+        
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
-            placeholder="搜索剪切板历史..."
-            className="bg-transparent border-none outline-none flex-1 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500"
+            placeholder="搜索剪切板内容..."
+            className="w-full pl-10 pr-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-blue-500 dark:focus:border-blue-400 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -127,95 +107,102 @@ export const ClipboardList = () => {
       </div>
 
       {/* 列表 */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto p-4">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
         {filteredHistory.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-zinc-400 dark:text-zinc-500 gap-2">
-            <Search size={32} className="opacity-20" />
-            <span className="text-sm">暂无历史记录</span>
+          <div className="flex flex-col items-center justify-center h-64 text-zinc-400 dark:text-zinc-500">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+              <Search className="w-8 h-8 opacity-40" />
+            </div>
+            <span className="text-sm font-medium">暂无历史记录</span>
+            <span className="text-xs mt-1">复制内容后将自动保存到这里</span>
           </div>
         ) : (
-          <div style={{ paddingTop: padTop, paddingBottom: padBottom }} className="space-y-3">
-          {filteredHistory.slice(range.start, range.end).map((item) => (
-            <div
-              key={item.id}
-              className="group relative bg-white dark:bg-zinc-900/50 rounded-lg p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer border border-zinc-200 dark:border-zinc-800/50 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm hover:shadow-md dark:shadow-none dark:hover:shadow-sm"
-              onClick={() => handleCopy(item)}
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-1 text-zinc-400 dark:text-zinc-500 shrink-0 relative">
-                  {item.type === 'text' ? <Type size={16} /> : <Image size={16} />}
-                </div>
-                <div className="flex-1 overflow-hidden min-w-0">
-                  {item.type === 'text' ? (
-                    isLikelyCode(decodeContent(item.content)) ? (
-                      <pre className="text-[12px] md:text-sm text-zinc-700 dark:text-zinc-300 line-clamp-3 break-words font-mono leading-relaxed whitespace-pre-wrap">
-                        {highlightMatches(decodeContent(item.content), searchQuery)}
-                      </pre>
+          <div className="space-y-3">
+            {filteredHistory.map((item) => (
+              <div
+                key={item.id}
+                className="group relative bg-white dark:bg-zinc-900 rounded-xl p-4 hover:shadow-lg dark:hover:shadow-zinc-800/50 transition-all duration-200 cursor-pointer border border-zinc-200 dark:border-zinc-800 hover:border-blue-200 dark:hover:border-blue-800/50"
+                onClick={() => handleCopy(item)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={clsx(
+                    "mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                    item.type === 'text' 
+                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-500" 
+                      : "bg-purple-50 dark:bg-purple-900/20 text-purple-500"
+                  )}>
+                    {item.type === 'text' ? <Type size={16} /> : <Image size={16} />}
+                  </div>
+                  
+                  <div className="flex-1 overflow-hidden min-w-0 pr-20">
+                    {item.type === 'text' ? (
+                      isLikelyCode(decodeContent(item.content)) ? (
+                        <pre className="text-xs text-zinc-700 dark:text-zinc-300 line-clamp-3 break-words font-mono leading-relaxed whitespace-pre-wrap bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-lg">
+                          {highlightMatches(decodeContent(item.content), searchQuery)}
+                        </pre>
+                      ) : (
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300 line-clamp-3 break-words leading-relaxed">
+                          {highlightMatches(decodeContent(item.content), searchQuery)}
+                        </p>
+                      )
                     ) : (
-                      <p className="text-sm text-zinc-700 dark:text-zinc-300 line-clamp-3 break-words leading-relaxed">
-                        {highlightMatches(decodeContent(item.content), searchQuery)}
-                      </p>
-                    )
-                  ) : (
-                    <div className="bg-zinc-100 dark:bg-zinc-950/50 rounded-md border border-zinc-200 dark:border-zinc-800/50 p-1 inline-block max-w-full">
-                      <ClipboardImage dataUrl={item.content} maxWidth={480} maxHeight={160} />
+                      <div className="inline-block max-w-full">
+                        <ClipboardImage dataUrl={item.content} maxWidth={400} maxHeight={140} />
+                      </div>
+                    )}
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="text-[11px] text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+                        {new Date(item.timestamp).toLocaleTimeString()}
+                      </span>
                     </div>
-                  )}
-                  <div className="mt-2.5 flex items-center gap-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-medium uppercase tracking-wider">
-                    <span>{new Date(item.timestamp).toLocaleTimeString()}</span>
                   </div>
                 </div>
-              </div>
-              
-              <div className={clsx(
-                "absolute top-3 right-3 transition-all transform flex gap-2",
-                // 显示条件：已复制或悬停
-                (copiedId === item.id) ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
-              )}>
-                <button 
-                  className={clsx(
-                    "p-2 rounded-md transition-all shadow-sm border",
-                    "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white dark:hover:text-white hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md hover:scale-105 active:scale-95 border-zinc-200 dark:border-zinc-700"
-                  )}
-                  title={item.type === 'image' ? "贴图到屏幕（图片）" : "贴图到屏幕（文本）"}
-                  aria-label={item.type === 'image' ? "贴图到屏幕（图片）" : "贴图到屏幕（文本）"}
-                  onClick={(e) => {
+                
+                {/* 操作按钮 */}
+                <div className={clsx(
+                  "absolute top-4 right-4 flex gap-2 transition-all duration-200",
+                  copiedId === item.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                )}>
+                  <button 
+                    className="p-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-zinc-200 dark:border-zinc-700 hover:border-blue-200 dark:hover:border-blue-800/50 transition-all shadow-sm"
+                    title="贴图到屏幕"
+                    onClick={(e) => {
                       e.stopPropagation();
                       window.ipcRenderer.send('pin-clipboard-image', item);
-                  }}
-                  // hidden={item.type !== 'image'} // Allow all types to be pinned
-                >
+                    }}
+                  >
                     <Monitor size={16} />
-                </button>
-                <button 
-                  className={clsx(
-                    "p-2 rounded-md transition-all shadow-sm border",
-                    copiedId === item.id
-                      ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 scale-105"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white dark:hover:text-white hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md hover:scale-105 active:scale-95 border-zinc-200 dark:border-zinc-700"
-                  )}
-                  title={copiedId === item.id ? "已复制" : "复制到剪切板"}
-                  aria-label={copiedId === item.id ? "已复制" : "复制到剪切板"}
-                  onClick={(e) => handleCopy(item, e)}
-                >
-                  {copiedId === item.id ? <Check size={16} /> : <Copy size={16} />}
-                </button>
+                  </button>
+                  <button 
+                    className={clsx(
+                      "p-2 rounded-lg border transition-all shadow-sm",
+                      copiedId === item.id
+                        ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+                        : "bg-white dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-zinc-200 dark:border-zinc-700 hover:border-blue-200 dark:hover:border-blue-800/50"
+                    )}
+                    title={copiedId === item.id ? "已复制" : "复制"}
+                    onClick={(e) => handleCopy(item, e)}
+                  >
+                    {copiedId === item.id ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         )}
       </div>
 
       {/* 底部 */}
-      <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/50 bg-zinc-50/80 dark:bg-zinc-950/80 backdrop-blur-sm flex justify-between items-center text-xs text-zinc-500 font-medium transition-colors duration-200">
-        <span className="px-2">{history.length} 条记录</span>
+      <div className="mt-auto px-6 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl flex justify-between items-center z-10 shrink-0">
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          共 <span className="font-medium text-zinc-700 dark:text-zinc-300">{history.length}</span> 条记录
+        </span>
         <button
           onClick={clearHistory}
-          className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 rounded-md transition-colors text-zinc-500"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
         >
           <Trash2 size={14} />
-          清空全部
+          清空
         </button>
       </div>
     </div>

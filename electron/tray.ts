@@ -1,37 +1,46 @@
-import { app, Tray, Menu, nativeImage, BrowserWindow } from 'electron';
+import { app, Tray, Menu, nativeImage, BrowserWindow, Notification } from 'electron';
 
 export class TrayManager {
   private tray: Tray | null = null;
   private window: BrowserWindow;
   private iconPath: string | null;
+  private onScreenshot?: () => void;
+  private onPin?: () => void;
+  private onSearch?: () => void;
+  private isRunningInBackground = false;
 
-  constructor(window: BrowserWindow, iconPath: string) {
+  constructor(
+    window: BrowserWindow, 
+    iconPath: string,
+    callbacks?: {
+      onScreenshot?: () => void;
+      onPin?: () => void;
+      onSearch?: () => void;
+    }
+  ) {
     this.window = window;
     this.iconPath = iconPath;
+    this.onScreenshot = callbacks?.onScreenshot;
+    this.onPin = callbacks?.onPin;
+    this.onSearch = callbacks?.onSearch;
     this.createTray();
+    this.setupWindowListeners();
   }
 
   private createTray() {
-    // 优先使用 Base64 图标以确保显示，因为 svg 在 windows 上支持不好
-    // 这是一个简单的 16x16 黑色方块的 Base64，实际生产环境应该替换为真实的 PNG Base64
+    // 优先使用 Base64 图标以确保显示
     const DEFAULT_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAADFJREFUOE9jZKAQMFKon2HgP+F/CqIxG8BwE8M//iMjI2NUQ8BoGKA9DNgcQAg30NAAAHgvBBshD1rkAAAAAElFTkSuQmCC';
     
-    // 默认图标处理
     let icon = nativeImage.createFromDataURL(DEFAULT_ICON);
-    // 关键修复：确保默认图标在 macOS 上也是 Template Image，以适应深色模式
     if (process.platform === 'darwin') {
         icon.setTemplateImage(true);
     }
     
-    // 如果 iconPath 是 PNG/ICO，尝试加载
-    // 在开发模式下，iconPath 可能是 undefined 或者指向不正确的路径
-    // 只有当文件确实存在时才使用
     try {
         if (this.iconPath && (this.iconPath.endsWith('.png') || this.iconPath.endsWith('.ico'))) {
             const fileIcon = nativeImage.createFromPath(this.iconPath);
             if (!fileIcon.isEmpty()) {
                 icon = fileIcon;
-                // macOS: 设置为 Template Image 以适应深色/浅色模式
                 if (process.platform === 'darwin') {
                     icon.setTemplateImage(true);
                 }
@@ -42,12 +51,33 @@ export class TrayManager {
     }
     
     this.tray = new Tray(icon);
-    this.tray.setToolTip('快截笔记');
+    this.tray.setToolTip('快截笔记 - 正在后台运行');
 
     this.updateContextMenu();
 
+    // 左键点击托盘图标 - 切换窗口显示/隐藏
     this.tray.on('click', () => {
       this.toggleWindow();
+    });
+
+    // 右键点击托盘图标 - 显示上下文菜单
+    this.tray.on('right-click', () => {
+      this.tray?.popUpContextMenu();
+    });
+  }
+
+  // 设置窗口监听器
+  private setupWindowListeners() {
+    // 监听窗口显示事件
+    this.window.on('show', () => {
+      this.isRunningInBackground = false;
+      this.updateContextMenu();
+    });
+
+    // 监听窗口隐藏事件
+    this.window.on('hide', () => {
+      this.isRunningInBackground = true;
+      this.updateContextMenu();
     });
   }
 
@@ -59,7 +89,7 @@ export class TrayManager {
     }
     try {
       if (path && (path.endsWith('.png') || path.endsWith('.ico'))) {
-        let img = nativeImage.createFromPath(path);
+        const img = nativeImage.createFromPath(path);
         if (!img.isEmpty()) {
           if (process.platform === 'darwin') img.setTemplateImage(true);
           this.tray.setImage(img);
@@ -69,7 +99,6 @@ export class TrayManager {
     } catch (e) {
       console.error('Failed to set tray icon:', e);
     }
-    // fallback to default base64
     const DEFAULT_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAADFJREFUOE9jZKAQMFKon2HgP+F/CqIxG8BwE8M//iMjI2NUQ8BoGKA9DNgcQAg30NAAAHgvBBshD1rkAAAAAElFTkSuQmCC';
     this.tray.setImage(nativeImage.createFromDataURL(DEFAULT_ICON));
   }
@@ -84,27 +113,72 @@ export class TrayManager {
 
   public updateStats(count: number) {
     if (this.tray) {
-      this.tray.setToolTip(`快截笔记 - ${count} 条记录`);
+      const status = this.isRunningInBackground ? '正在后台运行' : '前台运行中';
+      this.tray.setToolTip(`快截笔记 - ${count} 条记录 - ${status}`);
     }
     
-    // 在 macOS 上更新 Dock Badge
     if (process.platform === 'darwin') {
       app.dock.setBadge(count > 0 ? count.toString() : '');
+    }
+  }
+
+  // 显示托盘通知
+  public showNotification(title: string, body: string) {
+    // 使用系统通知
+    if (Notification.isSupported()) {
+      const notification = new Notification({
+        title,
+        body,
+        icon: this.iconPath || undefined,
+        silent: true,
+      });
+      notification.show();
+      
+      // 点击通知时显示窗口
+      notification.on('click', () => {
+        this.showWindow();
+      });
     }
   }
 
   private updateContextMenu() {
     if (!this.tray) return;
 
+    const isVisible = this.window.isVisible();
+    const isMinimized = this.window.isMinimized();
+
     const contextMenu = Menu.buildFromTemplate([
       { 
-        label: '显示主窗口', 
-        click: () => this.showWindow() 
+        label: isVisible && !isMinimized ? '隐藏主窗口' : '显示主窗口', 
+        click: () => this.toggleWindow() 
+      },
+      { type: 'separator' },
+      ...(this.onScreenshot ? [{
+        label: '截图',
+        accelerator: process.platform === 'darwin' ? 'Option+A' : 'Alt+Shift+A',
+        click: () => this.onScreenshot!()
+      }] : []),
+      ...(this.onPin ? [{
+        label: '贴图',
+        accelerator: process.platform === 'darwin' ? 'Option+P' : 'Alt+P',
+        click: () => this.onPin!()
+      }] : []),
+      ...(this.onSearch ? [{
+        label: '搜索',
+        accelerator: 'Ctrl+Q',
+        click: () => this.onSearch!()
+      }] : []),
+      { type: 'separator' },
+      {
+        label: '后台运行状态',
+        enabled: false,
+        toolTip: '应用当前正在后台运行，快捷键仍然有效'
       },
       { type: 'separator' },
       { 
-        label: '退出', 
+        label: '完全退出', 
         click: () => {
+          // 通过 IPC 通知主进程退出
           app.quit();
         } 
       }
@@ -114,21 +188,27 @@ export class TrayManager {
   }
 
   private toggleWindow() {
-    if (this.window.isVisible()) {
+    if (this.window.isVisible() && !this.window.isMinimized()) {
       this.window.hide();
-      // 保持 Dock 图标可见
+      this.isRunningInBackground = true;
     } else {
       this.showWindow();
+      this.isRunningInBackground = false;
     }
+    this.updateContextMenu();
   }
 
   private showWindow() {
-    // 确保 Dock 图标显示
     if (process.platform === 'darwin') {
       app.dock.show();
     }
     this.window.show();
+    if (this.window.isMinimized()) {
+      this.window.restore();
+    }
     this.window.focus();
+    this.isRunningInBackground = false;
+    this.updateContextMenu();
   }
 
   public destroy() {

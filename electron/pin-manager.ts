@@ -85,7 +85,7 @@ export class PinManager {
                     
                     // Use global screenshot settings for default path and filename
                     const screenshotConfig = this.store.get('screenshot') || {};
-                    let savePath = screenshotConfig.savePath || app.getPath('pictures');
+                    const savePath = screenshotConfig.savePath || app.getPath('pictures');
                     const fileNameTemplate = screenshotConfig.fileNameFormat || 'Pin_$yyyy-MM-dd_HH-mm-ss$.png';
                     let defaultFileName = generateFilename(fileNameTemplate, 'Pin');
                     

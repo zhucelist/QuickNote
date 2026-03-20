@@ -6,12 +6,14 @@ interface ShortcutConfig {
   showClipboard: string;
   screenshot: string;
   pin: string;
+  search: string;
 }
 
 const DEFAULT_SHORTCUTS: ShortcutConfig = {
   showClipboard: process.platform === 'darwin' ? 'Option+V' : 'Alt+V',
-  screenshot: process.platform === 'darwin' ? 'Option+A' : 'Alt+A',
+  screenshot: process.platform === 'darwin' ? 'Option+A' : 'Alt+Shift+A', // Windows 改为 Alt+Shift+A 避免冲突
   pin: process.platform === 'darwin' ? 'Option+P' : 'Alt+P',
+  search: 'Ctrl+Q',
 };
 
 export class ShortcutManager extends EventEmitter {
@@ -61,9 +63,18 @@ export class ShortcutManager extends EventEmitter {
     });
 
     // 贴图
-    this.register(this.config.pin, () => {
-      this.emit('pin');
-    });
+    if (this.config.pin) {
+      this.register(this.config.pin, () => {
+        this.emit('pin');
+      });
+    }
+
+    // 搜索
+    if (this.config.search) {
+      this.register(this.config.search, () => {
+        this.emit('search');
+      });
+    }
   }
 
   private register(accelerator: string, callback: () => void) {

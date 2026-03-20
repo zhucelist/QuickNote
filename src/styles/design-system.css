@@ -1,0 +1,420 @@
+/**
+ * 统一设计系统
+ * Design System for the Application
+ */
+
+@import "tailwindcss";
+
+/* ========================================
+   1. CSS 变量定义 / CSS Variables
+   ======================================== */
+
+:root {
+  /* 主色调 / Primary Colors */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+
+  /* 中性色 / Neutral Colors */
+  --neutral-50: #fafafa;
+  --neutral-100: #f4f4f5;
+  --neutral-200: #e4e4e7;
+  --neutral-300: #d4d4d8;
+  --neutral-400: #a1a1aa;
+  --neutral-500: #71717a;
+  --neutral-600: #52525b;
+  --neutral-700: #3f3f46;
+  --neutral-800: #27272a;
+  --neutral-900: #18181b;
+  --neutral-950: #09090b;
+
+  /* 语义化颜色 / Semantic Colors */
+  --success-50: #f0fdf4;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  --warning-50: #fffbeb;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --error-50: #fef2f2;
+  --error-500: #ef4444;
+  --error-600: #dc2626;
+  --info-50: #eff6ff;
+  --info-500: #3b82f6;
+  --info-600: #2563eb;
+
+  /* 圆角 / Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* 阴影 / Shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.12), 0 8px 10px -6px rgb(0 0 0 / 0.12);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.03);
+
+  /* 暗色模式阴影 / Dark Mode Shadows */
+  --shadow-dark-xs: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow-dark-sm: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-dark-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-dark-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  --shadow-dark-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.6);
+
+  /* 过渡动画 / Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slower: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 字体 / Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, 'Courier New', monospace;
+
+  /* 间距 / Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+}
+
+/* ========================================
+   2. 基础样式重置 / Base Styles
+   ======================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* ========================================
+   3. 滚动条样式 / Scrollbar Styles
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neutral-300);
+  border-radius: var(--radius-full);
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-400);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--neutral-700);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-600);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--neutral-300) transparent;
+}
+
+.dark * {
+  scrollbar-color: var(--neutral-700) transparent;
+}
+
+/* ========================================
+   4. 通用组件样式 / Component Styles
+   ======================================== */
+
+/* 按钮基础样式 / Button Base */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+         disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+}
+
+.btn-primary {
+  @apply bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700
+         focus:ring-blue-500 shadow-sm hover:shadow-md;
+}
+
+.btn-secondary {
+  @apply bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300
+         dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700 dark:active:bg-zinc-600
+         focus:ring-zinc-500;
+}
+
+.btn-ghost {
+  @apply bg-transparent text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900
+         dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100
+         focus:ring-zinc-500;
+}
+
+.btn-danger {
+  @apply bg-red-500 text-white hover:bg-red-600 active:bg-red-700
+         focus:ring-red-500;
+}
+
+/* 卡片样式 / Card */
+.card {
+  @apply bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800
+         shadow-sm transition-shadow duration-200;
+}
+
+.card-hover {
+  @apply hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700;
+}
+
+/* 输入框样式 / Input */
+.input {
+  @apply w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700
+         bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100
+         placeholder:text-zinc-400 dark:placeholder:text-zinc-500
+         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500
+         transition-all duration-200;
+}
+
+/* 标签样式 / Label */
+.label {
+  @apply block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5;
+}
+
+/* 分隔线 / Divider */
+.divider {
+  @apply h-px bg-zinc-200 dark:bg-zinc-800 my-4;
+}
+
+/* 徽章 / Badge */
+.badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-primary {
+  @apply bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300;
+}
+
+.badge-warning {
+  @apply bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300;
+}
+
+.badge-error {
+  @apply bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300;
+}
+
+/* ========================================
+   5. 动画关键帧 / Animations
+   ======================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* 动画工具类 / Animation Utilities */
+.animate-fade-in {
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp var(--transition-base) ease-out;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown var(--transition-base) ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--transition-base) ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft var(--transition-base) ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight var(--transition-base) ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 3s linear infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+/* ========================================
+   6. 玻璃拟态效果 / Glassmorphism
+   ======================================== */
+
+.glass {
+  @apply bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl;
+}
+
+.glass-strong {
+  @apply bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl;
+}
+
+.glass-subtle {
+  @apply bg-white/60 dark:bg-zinc-900/60 backdrop-blur-lg;
+}
+
+/* ========================================
+   7. 工具类 / Utility Classes
+   ======================================== */
+
+/* 文字渐变 / Text Gradient */
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500;
+}
+
+/* 悬停提升效果 / Hover Lift */
+.hover-lift {
+  @apply transition-transform duration-200 hover:-translate-y-0.5;
+}
+
+/* 聚焦环 / Focus Ring */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-900;
+}
+
+/* 选中状态 / Selected State */
+.is-selected {
+  @apply bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800;
+}
+
+/* 禁用状态 / Disabled State */
+.is-disabled {
+  @apply opacity-50 cursor-not-allowed pointer-events-none;
+}
+
+/* 加载状态 / Loading State */
+.is-loading {
+  @apply relative pointer-events-none;
+}
+
+.is-loading::after {
+  content: '';
+  @apply absolute inset-0 bg-white/50 dark:bg-zinc-900/50 flex items-center justify-center;
+}

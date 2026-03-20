@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import { MousePointer2, Type, Square, Circle, ArrowRight, Check, X, RotateCcw, RotateCw, Stamp, Focus, Grid3x3, Brush, ScanText, Pin, Download, ArchiveIcon } from 'lucide-react';
+import { MousePointer2, Type, Square, Circle, ArrowRight, Check, X, RotateCcw, RotateCw, Stamp, Focus, Grid3x3, Brush, ScanText, Pin, Download, Pencil } from 'lucide-react';
 import clsx from 'clsx';
 
 interface ToolbarProps {
@@ -16,6 +16,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, onAction, active
   const [hoveredButtonRect, setHoveredButtonRect] = useState<{ left: number, width: number } | null>(null);
   const [adjustedPosition, setAdjustedPosition] = useState(position);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const actionTools = useRef(new Set(['ocr', 'pin', 'save']));
 
   // Use useLayoutEffect to measure and adjust position before paint
   useLayoutEffect(() => {
@@ -54,6 +55,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, onAction, active
 
   const tools = [
     { id: 'select', icon: <MousePointer2 size={18} />, label: '选择' },
+    { id: 'pen', icon: <Pencil size={18} />, label: '画笔', hasColor: true, hasSize: true },
     { id: 'rect', icon: <Square size={18} />, label: '矩形', hasColor: true, hasSize: true },
     { id: 'circle', icon: <Circle size={18} />, label: '椭圆', hasColor: true, hasSize: true },
     { id: 'arrow', icon: <ArrowRight size={18} />, label: '箭头', hasColor: true, hasSize: true },
@@ -64,7 +66,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, onAction, active
     { id: 'spotlight', icon: <Focus size={18} />, label: '聚光灯' }, 
     { id: 'ocr', icon: <ScanText size={18} />, label: '文字提取' }, 
     { id: 'pin', icon: <Pin size={18} />, label: '贴图' },
-    { id: 'scroll', icon: <ArchiveIcon size={18} />, label: '长截图' },
     { id: 'save', icon: <Download size={18} />, label: '保存' },
   ];
 
@@ -128,12 +129,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, onAction, active
           {tools.map((tool) => (
             <button
               key={tool.id}
-              onClick={() => onToolSelect(tool.id)}
+              onClick={() => {
+                if (actionTools.current.has(tool.id)) onAction(tool.id);
+                else onToolSelect(tool.id);
+              }}
               onMouseEnter={(e) => handleMouseEnter(tool.label, e)}
               onMouseLeave={() => setHoveredTool(null)}
               className={clsx(
                 "p-2 rounded-md transition-colors relative group",
-                activeTool === tool.id 
+                !actionTools.current.has(tool.id) && activeTool === tool.id 
                   ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" 
                   : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700"
               )}

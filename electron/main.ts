@@ -10,22 +10,57 @@ log.transports.file.level = 'info';
 log.transports.console.level = 'info';
 autoUpdater.logger = log;
 
-// Set log file path
-const logPath = path.join(app.getPath('userData'), 'logs/app.log');
-log.transports.file.resolvePathFn = () => logPath;
+// Set log file path - 延迟到应用准备好后设置
+let logPath: string;
+const getLogPath = () => {
+  if (!logPath) {
+    logPath = path.join(app.getPath('userData'), 'logs/app.log');
+  }
+  return logPath;
+};
+log.transports.file.resolvePathFn = getLogPath;
 
-console.log('Log file path:', logPath);
-log.info('Application starting...');
+// 延迟日志记录到应用准备好后
+app.whenReady().then(() => {
+  console.log('Log file path:', getLogPath());
+  log.info('Application starting...');
+});
 import { ClipboardManager } from './clipboard-manager'
 import { ShortcutManager } from './shortcuts'
 import { Store } from './store'
 import { TrayManager } from './tray'
 import { ScreenshotManager } from './screenshot-manager'
 import { PinManager } from './pin-manager'
-import { createMenu } from './menu'
+import { SearchManager } from './search-manager'
+import { OCRManager } from './ocr-manager'
+import { createMenu, menuEvents } from './menu'
+import { exec } from 'node:child_process'
+import { promisify } from 'node:util'
 
 // 禁用 GPU 加速，解决部分系统下的崩溃问题和透明窗口白屏问题
 app.disableHardwareAcceleration();
+
+// 请求单实例锁，防止多开
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  console.log('Another instance is already running, quitting...');
+  app.quit();
+} else {
+  // 当尝试运行第二个实例时，聚焦到第一个实例的窗口
+  app.on('second-instance', () => {
+    console.log('Second instance detected, focusing first instance window');
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    }
+    // 同时显示搜索窗口（如果存在）
+    if (searchManager) {
+      searchManager.show();
+    }
+  });
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -45,10 +80,21 @@ let store: Store | null = null
 let trayManager: TrayManager | null = null
 let screenshotManager: ScreenshotManager | null = null
 let pinManager: PinManager | null = null
+let searchManager: SearchManager | null = null
+let ocrManager: OCRManager | null = null
 let recorderManager: null = null
-let isQuitting = false; // 标记是否正在退出应用
+let isQuitting = false;
+
+// 暴露 isQuitting 标志给托盘管理器使用
+declare global {
+  var isQuitting: boolean;
+}
+globalThis.isQuitting = false;
+
+const execAsync = promisify(exec);
 
 function createWindow() {
+  if (!app.isReady()) return;
   // 初始化 Store
   store = new Store({
     configName: 'settings',
@@ -95,6 +141,9 @@ function createWindow() {
   applyTheme(theme);
 
   // 创建应用菜单
+  menuEvents.onScreenshot = () => {
+    screenshotManager?.startScreenshot();
+  };
   createMenu();
 
   // 初始化剪切板管理器
@@ -126,7 +175,9 @@ function createWindow() {
 
   // 初始化托盘管理器
   const iconPath = path.join(process.env.VITE_PUBLIC as string, 'electron-vite.svg');
-  trayManager = new TrayManager(win, iconPath);
+  trayManager = new TrayManager(win, iconPath, {
+    onScreenshot: () => screenshotManager?.startScreenshot(),
+  });
   
   // 初始化截图管理器
   screenshotManager = new ScreenshotManager();
@@ -134,29 +185,37 @@ function createWindow() {
   // 初始化贴图管理器
   pinManager = new PinManager();
 
+  // 初始化搜索管理器
+  searchManager = new SearchManager();
+
+  // 监听搜索快捷键
+  shortcutManager.on('search', () => {
+    searchManager?.toggle();
+  });
+
   // 录屏功能已移除
 
   // 初始化时更新一次状态
   const initialCount = clipboardManager['history'].length;
   trayManager.updateStats(initialCount);
 
-  // 拦截关闭事件
+  // 拦截关闭事件 - 优化后台运行逻辑
   win.on('close', (event) => {
-    // 检查是否是从截图窗口或其他子窗口触发的关闭
-    // 实际上 win.on('close') 只监听主窗口
-    // 但如果用户 Cmd+Q 或调用 app.quit()，这里也会触发
-    
-    if (!isQuitting) {
-      event.preventDefault();
-      win?.hide();
-      // 在 macOS 上，窗口隐藏时可以隐藏 Dock 图标（可选，取决于产品定义）
-      // 但用户反馈希望在 Dock 中也能看到，所以保持显示
-      // if (process.platform === 'darwin') {
-      //   app.dock.hide(); 
-      // }
-      return false;
+    // 如果正在退出应用，允许关闭
+    if (isQuitting) {
+      return true;
     }
-    return true;
+
+    // 阻止默认关闭行为，改为隐藏窗口到后台
+    event.preventDefault();
+    win?.hide();
+    
+    // 显示托盘提示通知用户应用仍在后台运行
+    if (trayManager) {
+      trayManager.showNotification('快截笔记', '应用已最小化到托盘，仍在后台运行');
+    }
+    
+    return false;
   });
 
   // 测试主动推送消息到渲染进程
@@ -185,13 +244,17 @@ function createWindow() {
 
 // 设置开机自启
 function updateAutoLaunch(enabled: boolean, silent: boolean) {
-  // macOS: openAtLogin, openAsHidden
-  // Windows: openAtLogin, args
-  app.setLoginItemSettings({
-    openAtLogin: enabled,
-    openAsHidden: silent, // macOS
-    args: silent ? ['--hidden'] : [] // Windows
-  });
+  try {
+    // macOS: openAtLogin, openAsHidden
+    // Windows: openAtLogin, args
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      openAsHidden: silent, // macOS
+      args: silent ? ['--hidden'] : [] // Windows
+    });
+  } catch (error) {
+    console.error('Failed to set login item settings:', error);
+  }
 }
 
 // 处理静默启动
@@ -248,6 +311,10 @@ ipcMain.handle('select-file', async () => {
   });
   if (result.canceled) return null;
   return result.filePaths[0];
+});
+
+ipcMain.handle('get-home-dir', () => {
+  return app.getPath('home');
 });
 
 // IPC 获取截图配置
@@ -379,9 +446,17 @@ function cleanup() {
     trayManager.destroy()
     trayManager = null
   }
+  if (ocrManager) {
+    ocrManager.destroy().catch(() => {});
+    ocrManager = null;
+  }
   if (pinManager) {
       // pinManager.destroy() // if needed
       pinManager = null
+  }
+  if (searchManager) {
+    searchManager.hide();
+    searchManager = null;
   }
   if (recorderManager) {
     recorderManager = null;
@@ -392,11 +467,15 @@ function cleanup() {
 app.on('activate', () => {
   // 在 macOS 上，当点击 dock 图标且没有其他窗口打开时，
   // 通常会在应用程序中重新创建一个窗口。
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
-  } else if (win) {
-    win.show();
-  }
+  const run = () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    } else if (win) {
+      win.show();
+    }
+  };
+  if (app.isReady()) run();
+  else app.whenReady().then(run);
 })
 
 app.whenReady().then(() => {
@@ -404,7 +483,18 @@ app.whenReady().then(() => {
     if (process.platform === 'darwin') {
       app.setActivationPolicy('regular');
     }
-  createWindow();
+    if (!ocrManager) {
+      ocrManager = new OCRManager();
+    }
+    createWindow();
+    
+    // 监听托盘触发的退出事件
+    ipcMain.on('app-quit', () => {
+      isQuitting = true;
+      (global as any).isQuitting = true;
+      cleanup();
+      app.quit();
+    });
 })
 
 // IPC: 切换开机自启
@@ -535,4 +625,77 @@ ipcMain.on('renderer-console', (_event, level: string, ...args: any[]) => {
 ipcMain.handle('open-logs-folder', () => {
     const logDir = path.dirname(log.transports.file.getFile().path);
     shell.openPath(logDir);
+});
+
+// Window Detection for Smart Selection (macOS only)
+let lastWindowDetectAt = 0;
+let lastWindowDetectResult: Array<{x: number, y: number, width: number, height: number, title: string}> = [];
+
+ipcMain.handle('detect-windows', async () => {
+    if (process.platform !== 'darwin') {
+        return []; // 仅在 macOS 上支持
+    }
+    
+    try {
+        const now = Date.now();
+        if (now - lastWindowDetectAt < 800) {
+          return lastWindowDetectResult;
+        }
+        lastWindowDetectAt = now;
+        
+        // 使用 macOS 的 Quartz Window Services 获取窗口信息
+        const script = `
+            tell application "System Events"
+                set windowList to {}
+                set allProcesses to application processes whose background only is false
+                repeat with proc in allProcesses
+                    try
+                        set procWindows to windows of proc
+                        repeat with win in procWindows
+                            try
+                                set winPos to position of win
+                                set winSize to size of win
+                                set winName to name of win
+                                if winName is not "" then
+                                    set end of windowList to {¬
+                                        name:winName,¬
+                                        x:(item 1 of winPos),¬
+                                        y:(item 2 of winPos),¬
+                                        width:(item 1 of winSize),¬
+                                        height:(item 2 of winSize)¬
+                                    }
+                                end if
+                            end try
+                        end repeat
+                    end try
+                end repeat
+                return windowList
+            end tell
+        `;
+        
+        const { stdout } = await execAsync(`osascript -e '${script}'`);
+        
+        // 解析 AppleScript 输出
+        const windows: Array<{x: number, y: number, width: number, height: number, title: string}> = [];
+        const lines = stdout.split('\n');
+        
+        for (const line of lines) {
+            const match = line.match(/name:(.+),x:(\d+),y:(\d+),width:(\d+),height:(\d+)/);
+            if (match) {
+                windows.push({
+                    title: match[1],
+                    x: parseInt(match[2]),
+                    y: parseInt(match[3]),
+                    width: parseInt(match[4]),
+                    height: parseInt(match[5])
+                });
+            }
+        }
+        
+        lastWindowDetectResult = windows;
+        return windows;
+    } catch (error) {
+        console.log('[Main] Window detection failed:', error);
+        return [];
+    }
 });

@@ -1,7 +1,8 @@
 @import "tailwindcss";
+@import "./styles/design-system.css";
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
 
@@ -16,7 +17,7 @@ body {
   width: 100%;
   height: 100vh;
   @apply text-zinc-900 dark:text-zinc-100 transition-colors duration-200;
-  background-color: transparent; /* Default transparent for Screenshot/Pin windows */
+  background-color: transparent;
 }
 
 #root {
@@ -24,20 +25,224 @@ body {
   height: 100%;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* ========================================
+   全局过渡动画 / Global Transitions
+   ======================================== */
+
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+/* 禁用某些元素的过渡 / Disable transitions for specific elements */
+.no-transition,
+.no-transition * {
+  transition: none !important;
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-zinc-300 dark:bg-zinc-800 rounded-full transition-colors duration-200;
+/* ========================================
+   选中文字样式 / Selection Styles
+   ======================================== */
+
+::selection {
+  @apply bg-blue-600/70 text-white;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-zinc-400 dark:bg-zinc-700;
+.dark ::selection {
+  @apply bg-blue-500/55 text-white;
+}
+
+/* ========================================
+   占位符样式 / Placeholder Styles
+   ======================================== */
+
+::placeholder {
+  @apply text-zinc-400 dark:text-zinc-500;
+  opacity: 1;
+}
+
+/* ========================================
+   焦点样式 / Focus Styles
+   ======================================== */
+
+:focus-visible {
+  @apply outline-none ring-2 ring-blue-500/30 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900;
+}
+
+.focus-ring-none:focus-visible {
+  @apply ring-0 ring-offset-0 outline-none;
+}
+
+/* ========================================
+   图片样式 / Image Styles
+   ======================================== */
+
+img {
+  @apply max-w-full h-auto;
+}
+
+/* ========================================
+   链接样式 / Link Styles
+   ======================================== */
+
+a {
+  @apply text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors;
+}
+
+/* ========================================
+   代码样式 / Code Styles
+   ======================================== */
+
+code {
+  @apply font-mono text-sm bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-800 dark:text-zinc-200;
+}
+
+pre code {
+  @apply block p-4 overflow-x-auto;
+}
+
+/* ========================================
+   表格样式 / Table Styles
+   ======================================== */
+
+table {
+  @apply w-full border-collapse;
+}
+
+th, td {
+  @apply px-4 py-2 text-left border-b border-zinc-200 dark:border-zinc-800;
+}
+
+th {
+  @apply font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/50;
+}
+
+/* ========================================
+   列表样式 / List Styles
+   ======================================== */
+
+ul, ol {
+  @apply pl-5;
+}
+
+ul {
+  @apply list-disc;
+}
+
+ol {
+  @apply list-decimal;
+}
+
+li {
+  @apply mb-1;
+}
+
+/* ========================================
+   对话框和弹出层 / Dialogs & Popovers
+   ======================================== */
+
+[role="dialog"],
+[role="alertdialog"] {
+  @apply outline-none;
+}
+
+/* ========================================
+   加载状态 / Loading States
+   ======================================== */
+
+.loading-shimmer {
+  @apply relative overflow-hidden bg-zinc-200 dark:bg-zinc-800;
+}
+
+.loading-shimmer::after {
+  content: '';
+  @apply absolute inset-0 -translate-x-full;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.dark .loading-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+}
+
+/* ========================================
+   工具提示 / Tooltips
+   ======================================== */
+
+[data-tooltip] {
+  @apply relative;
+}
+
+[data-tooltip]::before {
+  content: attr(data-tooltip);
+  @apply absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs
+         bg-zinc-800 dark:bg-zinc-700 text-white rounded opacity-0 invisible
+         transition-all duration-200 whitespace-nowrap z-50;
+}
+
+[data-tooltip]:hover::before {
+  @apply opacity-100 visible;
+}
+
+/* ========================================
+   拖拽样式 / Drag Styles
+   ======================================== */
+
+[draggable="true"] {
+  @apply cursor-move;
+}
+
+.dragging {
+  @apply opacity-50;
+}
+
+.drop-target {
+  @apply ring-2 ring-blue-500 ring-offset-2;
+}
+
+/* ========================================
+   响应式工具类 / Responsive Utilities
+   ======================================== */
+
+@media (max-width: 640px) {
+  .hide-mobile {
+    @apply hidden;
+  }
+}
+
+@media (min-width: 641px) {
+  .show-mobile-only {
+    @apply hidden;
+  }
+}
+
+/* ========================================
+   打印样式 / Print Styles
+   ======================================== */
+
+@media print {
+  .no-print {
+    @apply hidden;
+  }
+  
+  body {
+    @apply bg-white text-black;
+  }
 }

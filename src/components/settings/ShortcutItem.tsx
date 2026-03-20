@@ -60,95 +60,106 @@ export const ShortcutItem = ({
   label: string; 
   value: string; 
   onChange: (value: string) => void;
-  onSave?: (value: string) => void;
+  onSave?: (value: string) => void | Promise<void>;
   description?: string;
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
+  const [displayValue, setDisplayValue] = useState(value);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setCurrentValue(value);
+    setDisplayValue(value);
   }, [value]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isRecording) return;
-    
-    e.preventDefault();
-    e.stopPropagation(); // 阻止事件冒泡
+  useEffect(() => {
+    if (isRecording) {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
 
-    // 如果按下 Escape，取消录制
-    if (e.key === 'Escape') {
-      setIsRecording(false);
-      setCurrentValue(value);
-      setError(null);
-      return;
-    }
-
-    // 获取按下的键
-    const modifiers: string[] = [];
-    if (e.ctrlKey) modifiers.push('Ctrl');
-    if (e.metaKey) modifiers.push(navigator.platform.includes('Mac') ? 'Option' : 'Meta'); // Electron use Option for Alt on Mac? No, Option is Alt. 
-    
-    const isMac = navigator.platform.includes('Mac');
-    
-    const electronModifiers: string[] = [];
-    if (e.metaKey) electronModifiers.push(isMac ? 'Command' : 'Meta');
-    if (e.ctrlKey) electronModifiers.push('Ctrl');
-    if (e.altKey) electronModifiers.push(isMac ? 'Option' : 'Alt');
-    if (e.shiftKey) electronModifiers.push('Shift');
-
-    // 获取主键
-    let key = e.code.replace('Key', '').replace('Digit', '');
-    
-    // 处理特殊键
-    if (key === 'Space') key = 'Space';
-    if (key.startsWith('Arrow')) key = key.replace('Arrow', '');
-    
-    // 如果只按下了修饰键，不保存
-    if (['Control', 'Alt', 'Shift', 'Meta', 'Command', 'Option'].some(m => key === m || e.key === m)) {
-      return;
-    }
-
-    const shortcut = [...electronModifiers, key].join('+');
-    
-    // 立即尝试保存
-    saveNewShortcut(shortcut);
-  };
-
-  const saveNewShortcut = async (shortcut: string) => {
-    if (shortcut === value) {
-        setIsRecording(false);
-        return;
-    }
-    
-    // 简单校验格式
-    if (!shortcut || shortcut.trim() === '') {
-        setError('快捷键不能为空');
-        return;
-    }
-
-    // 立即校验并保存
-    try {
-        const isAvailable = await window.ipcRenderer.invoke('check-shortcut-available', shortcut);
-        if (!isAvailable) {
-            setError('快捷键已被占用');
-            // 保持录制状态，只显示错误
-            return;
+        if (e.key === 'Escape') {
+          setIsRecording(false);
+          setDisplayValue(value);
+          setError(null);
+          return;
         }
+
+        const modifiers: string[] = [];
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+        if (e.metaKey && isMac) modifiers.push('Command');
+        if (e.ctrlKey) modifiers.push('Ctrl');
+        if (e.altKey) modifiers.push(isMac ? 'Option' : 'Alt');
+        if (e.shiftKey) modifiers.push('Shift');
+
+        // Get key code
+        let key = e.code;
         
-        setError(null);
-        if (onSave) {
-            await onSave(shortcut); 
-        } else {
-            onChange(shortcut);
+        // Clean up key code
+        if (key.startsWith('Key')) key = key.slice(3);
+        if (key.startsWith('Digit')) key = key.slice(5);
+        if (key === 'Space') key = 'Space';
+        
+        // Special keys mapping
+        const specialKeys: Record<string, string> = {
+            'ArrowUp': 'Up',
+            'ArrowDown': 'Down',
+            'ArrowLeft': 'Left',
+            'ArrowRight': 'Right',
+            'Enter': 'Return',
+            'Backspace': 'Backspace',
+            'Delete': 'Delete',
+            'Tab': 'Tab',
+            'Escape': 'Esc'
+        };
+        
+        if (specialKeys[key]) key = specialKeys[key];
+        
+        // If only modifiers are pressed, just show them
+        if (['Control', 'Alt', 'Shift', 'Meta', 'Command', 'Option', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'ShiftLeft', 'ShiftRight', 'MetaLeft', 'MetaRight'].includes(key)) {
+             const display = modifiers.join('+');
+             setDisplayValue(display);
+             return;
         }
-        // 保存成功后退出录制
-        setCurrentValue(shortcut);
-        setIsRecording(false);
-    } catch (e) {
-        setError('验证快捷键失败');
+
+        const shortcut = [...modifiers, key].join('+');
+        setDisplayValue(shortcut);
+        
+        // Validate and save
+        // Allow at least one modifier OR double key press (e.g. Option+Space, or F1)
+        // But for "double key" logic (like Ctrl+Ctrl), Electron doesn't support it natively in globalShortcut.
+        // User asked for "two repetitive keys", maybe they mean "Double Shift" or "Double Ctrl".
+        // Electron globalShortcut does NOT support "Double Click" style shortcuts directly.
+        // However, if the user means "Allow shortcuts like 'Ctrl+C' AND 'Ctrl+V' (not repetitive keys, but multiple shortcuts)", that's different.
+        // Assuming the user means "Modifier+Key" logic is too strict, and wants to allow simple keys like "F1" or "MediaNextTrack".
+        
+        // Relaxed validation: Allow if there are modifiers OR if it's a Function key / Special key
+        const isFunctionKey = key.match(/^F\d+$/);
+        const isMediaKey = ['MediaNextTrack', 'MediaPreviousTrack', 'MediaStop', 'MediaPlayPause', 'VolumeUp', 'VolumeDown', 'VolumeMute'].includes(key);
+        
+        if (modifiers.length > 0 && !['Control', 'Alt', 'Shift', 'Meta', 'Command', 'Option'].includes(key)) {
+             handleSave(shortcut);
+        } else if (isFunctionKey || isMediaKey) {
+             handleSave(shortcut);
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
     }
+  }, [isRecording, value]);
+
+  const handleSave = (shortcut: string) => {
+      // 简单校验
+      if (!shortcut) return;
+      
+      onChange(shortcut);
+      if (onSave) {
+        void onSave(shortcut);
+      }
+      setIsRecording(false);
   };
 
   const startRecording = () => {
@@ -171,7 +182,6 @@ export const ShortcutItem = ({
       <div className="flex items-center gap-2">
         <button
           onClick={isRecording ? undefined : startRecording}
-          onKeyDown={handleKeyDown}
           className={`
             relative px-4 py-2 min-w-[140px] h-10
             flex items-center justify-center gap-1.5
@@ -185,7 +195,7 @@ export const ShortcutItem = ({
         >
           {isRecording ? (
             <>
-              <span className="animate-pulse">请输入快捷键...</span>
+              <span className="animate-pulse">{displayValue || '请输入快捷键...'}</span>
             </>
           ) : (
             <div className="flex items-center gap-1">
